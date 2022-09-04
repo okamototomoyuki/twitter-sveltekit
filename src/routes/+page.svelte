@@ -1,57 +1,63 @@
-<script>
-	import Counter from '$lib/Counter.svelte';
+<script context="module" lang="ts">
+	interface Window {
+		OnActive(): void;
+		chrome: Chrome;
+	}
+	interface Chrome {
+		webview: WebView;
+	}
+	interface WebView {
+		postMessage(message: string): void;
+	}
+	declare var window: Window;
 </script>
 
-<svelte:head>
-	<title>Home</title>
-	<meta name="description" content="Svelte demo app" />
-</svelte:head>
+<script lang="ts">
+	import { onMount } from "svelte";
+	import { browser } from "$app/environment";
 
-<section>
-	<h1>
-		<span class="welcome">
-			<picture>
-				<source srcset="svelte-welcome.webp" type="image/webp" />
-				<img src="svelte-welcome.png" alt="Welcome" />
-			</picture>
-		</span>
+	let text: HTMLTextAreaElement | undefined;
 
-		to your new<br />SvelteKit app
-	</h1>
+	onMount(() => {
+		document.addEventListener("keydown", async function (e) {
+			if (e.code == "Enter" && e.ctrlKey) {
+				e.preventDefault();
+				if (text) {
+					const v = text.value;
+					text.value = "";
 
-	<h2>
-		try editing <strong>src/routes/+page.svelte</strong>
-	</h2>
+					await fetch(location.href, { method: "post", body: v });
 
-	<Counter />
-</section>
+					if (browser) {
+						window?.chrome?.webview?.postMessage("close");
+					}
+				}
+			}
+		});
+	});
 
-<style>
-	section {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		flex: 1;
+	if (browser) {
+		// WebView2 活性時
+		if (window) {
+			window.OnActive = () => {
+				setTimeout(function () {
+					text?.focus();
+				}, 0);
+			};
+		}
 	}
+</script>
 
-	h1 {
-		width: 100%;
-	}
+<textarea bind:this={text} contenteditable="true" />
 
-	.welcome {
-		display: block;
-		position: relative;
+<style lang="scss">
+	textarea {
 		width: 100%;
-		height: 0;
-		padding: 0 0 calc(100% * 495 / 2048) 0;
-	}
-
-	.welcome img {
-		position: absolute;
-		width: 100%;
-		height: 100%;
-		top: 0;
-		display: block;
+		height: auto;
+		min-height: 75px;
+		border: {
+			style: solid;
+			width: 1px;
+		}
 	}
 </style>
